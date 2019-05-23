@@ -5,44 +5,8 @@
 #include <stdio.h>
 #include <io.c>
 #include <string.h>
-
-unsigned char GetKeypadKey() {
-
-	PORTC = 0xEF; // Enable row 4 with 0, disable others with 1’s
-	asm("nop"); // add a delay to allow PORTC to stabilize before checking
-	if (GetBit(PINC,0)==0) { return('1'); }
-	if (GetBit(PINC,1)==0) { return('4'); }
-	if (GetBit(PINC,2)==0) { return('7'); }
-	if (GetBit(PINC,3)==0) { return('*'); }
-
-	// Check keys in col 2
-	PORTC = 0xDF; // Enable row 3 with 0, disable others with 1’s
-	asm("nop"); // add a delay to allow PORTC to stabilize before checking
-	if (GetBit(PINC,0)==0) { return('2'); }
-	if (GetBit(PINC,1)==0) { return('5'); }
-	if (GetBit(PINC,2)==0) { return('8'); }
-	if (GetBit(PINC,3)==0) { return('0'); }
-
-	// Check keys in col 3
-	PORTC = 0xBF; // Enable row 2 with 0, disable others with 1’s
-	asm("nop"); // add a delay to allow PORTC to stabilize before checking
-	if (GetBit(PINC,0)==0) { return('3'); }
-	if (GetBit(PINC,1)==0) { return('6'); }
-	if (GetBit(PINC,2)==0) { return('9'); }
-	if (GetBit(PINC,3)==0) { return('#'); }
-
-	// Check keys in col 4
-	PORTC = 0X7F; // Enable row 1 with 0, disable others with 1’s
-	asm("nop"); // add a delay to allow PORTC to stabilize before checking
-	if (GetBit(PINC,0)==0) { return('A'); }
-	if (GetBit(PINC,1)==0) { return('B'); }
-	if (GetBit(PINC,2)==0) { return('C'); }
-	if (GetBit(PINC,3)==0) { return('D'); }
-
-	return('\0'); // default value
-
-}
-
+#include <keypad.h>
+#include <score.c>
 
 //--------Find GCD function --------------------------------------------------
 unsigned long int findGCD(unsigned long int a, unsigned long int b)
@@ -71,199 +35,326 @@ typedef struct _task {
 
 //--------End Task scheduler data structure-----------------------------------
 
+typedef enum {false, true} bool;
+
 //--------Shared Variables----------------------------------------------------
-unsigned char SM2_output = 0x00;
-unsigned char SM3_output = 0x00;
+unsigned char button;
+unsigned char player1 = 0;
+unsigned char player2 = 0;
 unsigned char pressed = 0;
-unsigned char key = 0x00;
+bool menu = true;
+bool pause = false;
 
 //--------End Shared Variables------------------------------------------------
 
 
-
-/*
-SM's to make:
-
-Audio
-Input
-Display
-Score/Accuracy
-Menu
-	Song select
-	Pause/exit/resume
-
-
-
-*/
-
 //--------User defined FSMs---------------------------------------------------
 //Enumeration of states.
-enum SM1_States { SM1_wait, SM1_press };
+enum SNES_SM { SNES_wait, SNES_press, SNES_hold };
 
 // Monitors button connected to PA0. 
 // When button is pressed, shared variable "pause" is toggled.
-int SMInputTick(int state) {
+int SNESInputTick(int state) {
 	
 	//get input from controller
-	key = GetKeypadKey();
+// 	button = GetSNESIn();
+// 	player1 = mapSNESIn(button, 1);
+// 	player2 = mapSNESIn(button, 2);
+// 	menu = mapSNESIn(button, 0);
+	button = GetKeypadKey();
 	
 	//State machine transitions
 	switch (state) {
-		case SM1_wait: pressed = 0;
-				if (key != '\0') {	// Wait for button press
-					state = SM1_press;
+		case SNES_wait: pressed = 0;
+				// if (!button.empty()) {	// If there are items in button, an input has been entered
+				if(button != '\0') {
+					state = SNES_press;
 				}
 			break;
-		case SM1_press:	pressed = 1;
-				if(key == '\0') {
-					state = SM1_wait;
+		case SNES_press: state = SNES_hold;	pressed = 1;
+			break;
+		case SNES_hold:
+				//if(button.empty()) {	// If there are no items in button, no input is currently available
+				if(button == '\0') {
+					state = SNES_wait;
 				}
 			break;
-		default: state = SM1_wait; // default: Initial state
+		default: state = SNES_wait; // default: Initial state
+			break;
+	}
+
+	//State machine actions
+	switch(state) {
+		case SNES_wait: PORTB = 0x00;	
+			break;
+		case SNES_press:
+				PORTB = 0xFF;
+				switch(button) {
+					case 'A': if(player1 < 240) player1 += 10;
+						break;
+					case 'B': if(player1 > 10) player1 -= 10;
+						break;
+					case 'C': if(player2 < 240) player2 += 10;
+						break;
+					case 'D': if(player2 > 10) player2 -= 10;
+						break;
+					case '5': writeMax(0x00);
+						break;
+					default:
+						break;
+				}
+			break;
+		case SNES_hold:	
+			break;
+		default:		
+			break;
+	}
+
+	return state;
+}
+
+//Audio SM
+enum Audio_SM {Audio_wait, Audio_play };
+
+int AudioTick(int state) {
+	
+	//State machine transitions
+	switch (state) {
+		case Audio_wait: 
+			break;
+		case Audio_play: 
+				
+			break;
+		default: state = Audio_wait;
+			break;
+	}
+
+	//State machine actions
+	switch(state) {
+		case Audio_wait:
+			break;
+		case Audio_play: 
+			break;
+		default: state = Audio_wait;	
+			break;
+	}
+
+	return state;
+}
+
+//LED SM
+enum LED_SM { LED_wait };
+	
+int LEDTick(int state) {
+	
+	//State machine transitions
+	switch (state) {
+		case LED_wait: state = LED_wait;
+			break;
+// 		case :
+// 			break;
+		default: state = LED_wait;
 			break;
 	}
 
 	//State machine actions
 // 	switch(state) {
-// 		case SM1_wait:	break;
-// 		case SM1_press:	pause = (pause == 0) ? 1 : 0; // toggle pause
+// 		case :
 // 			break;
-// 		case SM1_release:	break;
-// 		default:		break;
+// 		case :
+// 			break;
+// 		default: state = ;
+// 			break;
 // 	}
-
 	return state;
 }
 
-//Enumeration of states.
-enum SM2_States {SM2_wait, SM2_early, SM2_onTime, SM2_late };
+//LCD SM
+enum LCD_SM { LCD_start, LCD_main, LCD_max, LCD_current, LCD_display, LCD_pause };
 
-// If paused: Do NOT toggle LED connected to PB0
-// If unpaused: toggle LED connected to PB0
-int SMLEDTick(int state) {
-	int current = state;
+int LCDTick(int state) {
+	
 	//State machine transitions
-	switch (state) {
-		case SM2_displayOff: state = SM2_wait;
-			break;
-		case SM2_wait: 
-				if(pressed) {
-					state = SM2_displayOn;
+	switch(state) {
+		case LCD_start: state = LCD_main; menu = true;
+		case LCD_main: 
+				switch(button) {
+					case '#': state = LCD_current;
+						break;
+					case '*': state = LCD_max;
+						break;
+					default: state = LCD_main;
+						break;
 				}
 			break;
-		case SM2_displayOn: state = SM2_hold;
+		case LCD_max: state = LCD_display;
 			break;
-		case SM2_hold: 
-				if(!pressed) {
-					state = SM2_displayOff;
+		case LCD_current: state = LCD_display; menu = false;
+			break;
+		case LCD_display:
+				if(button == '0') {
+					state = LCD_start;
 				}
+// 				if(button == '0' && menu) {
+// 					state = LCD_start;
+// 				} else if(button == '0' && !menu) {
+// 					state = pause ? LCD_current : LCD_pause;
+// 					pause = pause ? false : true;
+// 				}
 			break;
-		default: state = SM2_wait;
+		case LCD_pause: state = LCD_display;
+			break;
+		default: state = LCD_start;
 			break;
 	}
-
+	
 	//State machine actions
-	switch(current) {
-		case SM2_displayOff:
+	switch (state) {
+		case LCD_start:
 				LCD_ClearScreen();
-				LCD_DisplayString(1, "No input!");
+				LCD_DisplayString(1, "Main menu");
+	 		break;
+		case LCD_main: 
 			break;
-		case SM2_wait: break;
-		case SM2_displayOn:
+	 	case LCD_max:{
+				 unsigned char maxScore = readMax();
+				 if(player1 > maxScore) {
+					maxScore = player1;
+					writeMax(player1);
+				 }
+				 if(player2 > maxScore) {
+					maxScore = player2;
+					writeMax(player2);
+				 }
+				 
+				 PORTB = (PORTB & 0x00) | maxScore;
+				 unsigned char buffer[10];
+				 unsigned char printout[34] = "Max Score: ";
+				 itoa(maxScore, buffer, 10);
+				 strcat(printout, buffer);
+				 printout[14] = '\0';
+				 printout[15] = '\0';
+				 LCD_ClearScreen();
+				 LCD_DisplayString(1, printout);
+			 }
+	 		break;
+	 	case LCD_current:{
+				//unsigned char* currentScores = updateLCDString(player1, player2);
+				//LCD_DisplayString(1, currentScores);
+				
+				unsigned char buffer1[10];
+				unsigned char buffer2[10];
+				
+				itoa(player1, buffer1, 10);
+				itoa(player2, buffer2, 10);
+				
+				unsigned char printout[34] = "Player 1: ";
+				strcat(printout, buffer1);
+				strcat(printout, "     Player 2: ");
+				strcat(printout, buffer2);
+				
 				LCD_ClearScreen();
-				LCD_WriteData(key);
-			break;
-		case SM2_hold: break;
-		default: state = SM2_displayOff;	
-			break;
+				LCD_DisplayString(1, printout);
+				
+				PORTB = (PORTB & 0x00) | player1;
+			}
+	 		break;
+		case LCD_pause: 
+				LCD_ClearScreen();
+				LCD_DisplayString(1, "Puased!");
+			break;	
+	 	default:
+	 		break;
 	}
-
+	
 	return state;
 }
+
 
 // Implement scheduler code from PES.
 int main()
 {
-// Set Data Direction Registers
-// Buttons PORTA[0-7], set AVR PORTA to pull down logic
-DDRA = 0xFF; PORTA = 0x00;
-DDRB = 0xFF; PORTB = 0x00;
-DDRC = 0xF0; PORTC = 0x0F;
-DDRD = 0xFF; PORTD = 0x00;
+	//port A and B are for LCD
+	//port C is for LED  //temporarily for keypad
+	//port D is for audio
+	DDRA = 0xFF; PORTA = 0x00;
+	DDRB = 0xFF; PORTB = 0x00;
+	DDRC = 0xF0; PORTC = 0x0F;
+	DDRD = 0xFF; PORTD = 0x00;
 
-// Period for the tasks
-unsigned long int SMTick1_calc = 50;
-unsigned long int SMTick2_calc = 50;
-//unsigned long int SMTick3_calc = 1000;
-//unsigned long int SMTick4_calc = 10;
+	// Period for the tasks
+	unsigned long int SNESTick_calc = 50;
+	unsigned long int AudioTick_calc = 50;
+	unsigned long int LEDTick_calc = 50;
+	unsigned long int LCDTick_calc = 50;
 
-//Calculating GCD
-unsigned long int tmpGCD = 1;
-tmpGCD = findGCD(SMTick1_calc, SMTick2_calc);
-//tmpGCD = findGCD(tmpGCD, SMTick3_calc);
-//tmpGCD = findGCD(tmpGCD, SMTick4_calc);
+	//Calculating GCD
+	unsigned long int tmpGCD = 1;
+	tmpGCD = findGCD(SNESTick_calc, AudioTick_calc);
+	tmpGCD = findGCD(tmpGCD, LEDTick_calc);
+	tmpGCD = findGCD(tmpGCD, LCDTick_calc);
 
-//Greatest common divisor for all tasks or smallest time unit for tasks.
-unsigned long int GCD = tmpGCD;
+	//Greatest common divisor for all tasks or smallest time unit for tasks.
+	unsigned long int GCD = tmpGCD;
 
-//Recalculate GCD periods for scheduler
-unsigned long int SMTick1_period = SMTick1_calc/GCD;
-unsigned long int SMTick2_period = SMTick2_calc/GCD;
-//unsigned long int SMTick3_period = SMTick3_calc/GCD;
-//unsigned long int SMTick4_period = SMTick4_calc/GCD;
+	//Recalculate GCD periods for scheduler
+	unsigned long int SNESTick_period = SNESTick_calc/GCD;
+	unsigned long int AudioTick_period = AudioTick_calc/GCD;
+	unsigned long int LEDTick_period = LEDTick_calc/GCD;
+	unsigned long int LCDTick_period = LCDTick_calc/GCD;
 
-//Declare an array of tasks 
-static task task1, task2;
-task *tasks[] = { &task1, &task2 };
-const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
+	//Declare an array of tasks 
+	static task task1, task2, task3, task4;
+	task *tasks[] = { &task1, &task2, &task3, &task4 };
+	const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
 
-// Task 1
-task1.state = -1;//Task initial state.
-task1.period = SMTick1_period;//Task Period.
-task1.elapsedTime = SMTick1_period;//Task current elapsed time.
-task1.TickFct = &SMKeypadTick;//Function pointer for the tick.
+	// Task 1
+	task1.state = -1;//Task initial state.
+	task1.period = SNESTick_period;//Task Period.
+	task1.elapsedTime = SNESTick_period;//Task current elapsed time.
+	task1.TickFct = &SNESInputTick;//Function pointer for the tick.
 
-// Task 2
-task2.state = -1;//Task initial state.
-task2.period = SMTick2_period;//Task Period.
-task2.elapsedTime = SMTick2_period;//Task current elapsed time.
-task2.TickFct = &SMLEDTick;//Function pointer for the tick.
+	// Task 2
+	task2.state = -1;//Task initial state.
+	task2.period = AudioTick_period;//Task Period.
+	task2.elapsedTime = AudioTick_period;//Task current elapsed time.
+	task2.TickFct = &AudioTick;//Function pointer for the tick.
 
-// Task 3
-// task3.state = -1;//Task initial state.
-// task3.period = SMTick3_period;//Task Period.
-// task3.elapsedTime = SMTick3_period; // Task current elasped time.
-// task3.TickFct = &SMTick3; // Function pointer for the tick.
+	// Task 3
+	task3.state = -1;//Task initial state.
+	task3.period = LEDTick_period;//Task Period.
+	task3.elapsedTime = LEDTick_period; // Task current elasped time.
+	task3.TickFct = &LEDTick; // Function pointer for the tick.
 
-// Task 4
-// task4.state = -1;//Task initial state.
-// task4.period = SMTick4_period;//Task Period.
-// task4.elapsedTime = SMTick4_period; // Task current elasped time.
-// task4.TickFct = &SMTick4; // Function pointer for the tick.
+	// Task 4
+	task4.state = -1;//Task initial state.
+	task4.period = LCDTick_period;//Task Period.
+	task4.elapsedTime = LCDTick_period; // Task current elasped time.
+	task4.TickFct = &LCDTick; // Function pointer for the tick.
 
-// Set the timer and turn it on
-TimerSet(GCD);
-TimerOn();
-LCD_init();
+	// Set the timer and turn it on
+	TimerSet(GCD);
+	TimerOn();
+	LCD_init();
 
-unsigned short i; // Scheduler for-loop iterator
-while(1) {
+	unsigned short i; // Scheduler for-loop iterator
+	while(1) {
 	
-	// Scheduler code
-	for ( i = 0; i < numTasks; i++ ) {
-		// Task is ready to tick
-		if ( tasks[i]->elapsedTime == tasks[i]->period ) {
-			// Setting next state for task
-			tasks[i]->state = tasks[i]->TickFct(tasks[i]->state);
-			// Reset the elapsed time for next tick.
-			tasks[i]->elapsedTime = 0;
+		// Scheduler code
+		for ( i = 0; i < numTasks; i++ ) {
+			// Task is ready to tick
+			if ( tasks[i]->elapsedTime == tasks[i]->period ) {
+				// Setting next state for task
+				tasks[i]->state = tasks[i]->TickFct(tasks[i]->state);
+				// Reset the elapsed time for next tick.
+				tasks[i]->elapsedTime = 0;
+			}
+			tasks[i]->elapsedTime += 1;
 		}
-		tasks[i]->elapsedTime += 1;
+		while(!TimerFlag);
+		TimerFlag = 0;
 	}
-	while(!TimerFlag);
-	TimerFlag = 0;
-}
 
-// Error: Program should not exit!
-return 0;
+	// Error: Program should not exit!
+	return 0;
 }
