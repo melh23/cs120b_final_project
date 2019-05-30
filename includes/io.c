@@ -6,13 +6,39 @@
 #define SET_BIT(p,i) ((p) |= (1 << (i)))
 #define CLR_BIT(p,i) ((p) &= ~(1 << (i)))
 #define GET_BIT(p,i) ((p) & (1 << (i)))
-          
+
 /*-------------------------------------------------------------------------*/
 
 #define DATA_BUS PORTD		// port connected to pins 7-14 of LCD display
-#define CONTROL_BUS PORTA	// port connected to pins 4 and 6 of LCD disp.
+#define CONTROL_BUS PORTA	// port connected to pins 4-6 of LCD display
+#define DATA_CMD DDRD		// ddrx connected to pins 7-14 of LCD display
+#define CONTROL_CMD DDRA	// ddrx connected to pins 4-6 of LCD display
 #define RS 0			// pin number of uC connected to pin 4 of LCD disp.
-#define E 1			// pin number of uC connected to pin 6 of LCD disp.
+#define RW 1		//pin number of uC connected to pin 5 of LCD disp.
+#define E 2			// pin number of uC connected to pin 6 of LCD disp.
+
+/*-------------------------------------------------------------------------*/
+
+// #define up 0x00
+// #define down 0x01
+// #define left 0x02
+// #define right 0x03
+// #define upDark 0x04
+// #define downDark 0x05
+// #define leftDark 0x06
+// #define rightDark 0x07
+
+
+
+//may want to save these onto EEPROM? idk
+const static unsigned char upA[8] = {0x04, 0x0A, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00};
+const static unsigned char downA[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x0A, 0x04};
+const static unsigned char leftA[8] = {0x04, 0x08, 0x08, 0x10, 0x10, 0x08, 0x08, 0x04};
+const static unsigned char rightA[8] = {0x04, 0x02, 0x02, 0x01, 0x01, 0x02, 0x02, 0x04};
+const static unsigned char upDarkA[8] = {0x1B, 0x15, 0x0E, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F};
+const static unsigned char downDarkA[8] = {0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x0E, 0x15, 0x1B};
+const static unsigned char leftDarkA[8] = {0x1B, 0x17, 0x17, 0x0F, 0x0F, 0x17, 0x17, 0x1B};
+const static unsigned char rightDarkA[8] = {0x1B, 0x1D, 0x1D, 0x1E, 0x1E, 0x1D, 0x1D, 0x1B};
 
 /*-------------------------------------------------------------------------*/
 
@@ -22,6 +48,9 @@ void LCD_ClearScreen(void) {
 
 void LCD_init(void) {
 
+	CONTROL_CMD = 0xFF;		//allow write data to memory?
+	DATA_CMD = 0xFF;
+	
     //wait for 100 ms.
 	delay_ms(100);
 	LCD_WriteCommand(0x38);
@@ -33,6 +62,7 @@ void LCD_init(void) {
 
 void LCD_WriteCommand (unsigned char Command) {
    CLR_BIT(CONTROL_BUS,RS);
+   //CLR_BIT(CONTROL_BUS, RW);	//added to input new chars
    DATA_BUS = Command;
    SET_BIT(CONTROL_BUS,E);
    asm("nop");
@@ -42,6 +72,7 @@ void LCD_WriteCommand (unsigned char Command) {
 
 void LCD_WriteData(unsigned char Data) {
    SET_BIT(CONTROL_BUS,RS);
+   //CLR_BIT(CONTROL_BUS, RW);	//added to input new chars
    DATA_BUS = Data;
    SET_BIT(CONTROL_BUS,E);
    asm("nop");
@@ -49,7 +80,7 @@ void LCD_WriteData(unsigned char Data) {
    delay_ms(1);
 }
 
-void LCD_DisplayString( unsigned char column, const unsigned char* string) {
+void LCD_DisplayString(unsigned char column, const unsigned char* string) {
    LCD_ClearScreen();
    unsigned char c = column;
    while(*string) {
@@ -69,7 +100,6 @@ void LCD_Cursor(unsigned char column) {
 }
 
 void delay_ms(int miliSec) //for 8 Mhz crystal
-
 {
     int i,j;
     for(i=0;i<miliSec;i++)
@@ -77,4 +107,32 @@ void delay_ms(int miliSec) //for 8 Mhz crystal
   {
    asm("nop");
   }
+}
+
+//Custom charachter fxns
+void LCD_WriteCustom(unsigned char address, unsigned char* symbol) {
+	LCD_WriteCommand(0x40 + (address*8));	//for ccgram
+	for(unsigned int i = 0; i < 8; i++) {
+		LCD_WriteData(symbol[i]);
+	}
+	LCD_WriteCommand(0x80);
+}
+
+void LCD_LoadChar(unsigned char address, unsigned char* symbol) {
+	LCD_WriteCommand(0x40 + (address*8));	//for ccgram
+	for(unsigned int i = 0; i < 8; i++) {
+		LCD_WriteData(symbol[i]);
+	}
+}
+
+void LCD_LoadCustomChars() {
+	LCD_LoadChar(1, upA);
+	LCD_LoadChar(1, upA);
+	LCD_LoadChar(2, downA);
+	LCD_LoadChar(3, leftA);
+	LCD_LoadChar(4, rightA);
+	LCD_LoadChar(5, upDarkA);
+	LCD_LoadChar(6, downDarkA);
+	LCD_LoadChar(7, leftDarkA);
+	LCD_LoadChar(8, rightDarkA);	//was LoadChar
 }
