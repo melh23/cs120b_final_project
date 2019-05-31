@@ -50,8 +50,6 @@ bool menu = true;
 bool pause = false;
 struct music scale; 
 unsigned short beat = 0;
-unsigned char currentNote = 0;
-unsigned char prevNote = 0;
 bool song_over = false;
 
 // #define up 0x01
@@ -166,9 +164,13 @@ int AudioTick(int state) {
 	switch (state) {
 		case Audio_wait: 
 				//LCD_DisplayString(1, "wait");
+				beat = 0;
 				if(menu == false) {
-					state = Audio_start;
-					beat = 0;
+					if(beat < scale.start[scale.current]) {
+						state = Audio_off;
+					} else {
+						state = Audio_start;
+					}
 				}
 			break;
 		case Audio_start: state = Audio_play;
@@ -205,6 +207,7 @@ int AudioTick(int state) {
 					}
 				} else if(menu == true) {
 					state = Audio_wait;
+					scale.current = 0;
 				}
 			break;
 		default: state = Audio_wait;
@@ -272,7 +275,7 @@ int LCDTick(int state) {
 	
 	//State machine transitions
 	switch(state) {
-		case LCD_start: state = LCD_main; menu = true; pause = false;
+		case LCD_start: state = LCD_main; menu = true; pause = false; song_over = false; player1 = 0; player2 = 0;
 		case LCD_main: 
 				menu = true; pause = false;
 				switch(button) {

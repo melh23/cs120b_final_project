@@ -28,7 +28,7 @@ struct music {
 // }
 
 const static double tones[] = {c4, d4, e4, f4, g4, a4, b4, c5, b4, a4, g4, f4, e4, d4, c4};
-const static unsigned char starts[] = {0, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
+const static unsigned char starts[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
 const static unsigned char stops[] = {2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
 const static unsigned char directionS[] = {up, right, up, right, up, right, up, right, down, right, down, right, down, right, down};
 
