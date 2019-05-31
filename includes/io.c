@@ -123,6 +123,7 @@ void LCD_LoadChar(unsigned char address, unsigned char* symbol) {
 	for(unsigned int i = 0; i < 8; i++) {
 		LCD_WriteData(symbol[i]);
 	}
+	LCD_WriteCommand(0x80);
 }
 
 void LCD_LoadCustomChars() {
@@ -134,5 +135,5 @@ void LCD_LoadCustomChars() {
 	LCD_LoadChar(5, upDarkA);
 	LCD_LoadChar(6, downDarkA);
 	LCD_LoadChar(7, leftDarkA);
-	LCD_LoadChar(8, rightDarkA);	//was LoadChar
+	LCD_LoadChar(8, rightDarkA);
 }

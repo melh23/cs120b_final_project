@@ -44,11 +44,15 @@ typedef enum {false, true} bool;
 unsigned char button;
 unsigned char player1 = 0;
 unsigned char player2 = 0;
+bool scoreChange = false;
 unsigned char pressed = 0;
 bool menu = true;
 bool pause = false;
 struct music scale; 
 unsigned short beat = 0;
+unsigned char currentNote = 0;
+unsigned char prevNote = 0;
+bool song_over = false;
 
 // #define up 0x01
 // #define down 0x02
@@ -58,8 +62,6 @@ unsigned short beat = 0;
 // #define downDark 0x06
 // #define leftDark 0x07
 // #define rightDark 0x08
-
-enum directions {zero, up, down, left, right, upDark, downDark, leftDark, rightDark};
 
 //--------End Shared Variables------------------------------------------------
 
@@ -108,13 +110,13 @@ int SNESInputTick(int state) {
 		case SNES_press:
 				//PORTB = 0xFF;
 				switch(button) {
-					case 'A': if(player1 < 240 && !menu) player1 += 10;
+					case 'A': if(player1 < 240 && !menu) player1 += 10; scoreChange = true;
 						break;
-					case 'B': if(player1 > 10 && !menu) player1 -= 10;
+					case 'B': if(player1 > 10 && !menu) player1 -= 10; scoreChange = true;
 						break;
-					case 'C': if(player2 < 240 && !menu) player2 += 10;
+					case 'C': if(player2 < 240 && !menu) player2 += 10; scoreChange = true;
 						break;
-					case 'D': if(player2 > 10 && !menu) player2 -= 10;
+					case 'D': if(player2 > 10 && !menu) player2 -= 10; scoreChange = true;
 						break;
 					case '5': writeMax(0x00);
 						break;
@@ -149,6 +151,12 @@ int SNESInputTick(int state) {
 	return state;
 }
 
+void LCD_WriteValue(unsigned int value) {
+	unsigned char buffer[10];
+	itoa(value, buffer, 10);
+	LCD_DisplayString(1, buffer);
+}
+
 //Audio SM
 enum Audio_SM {Audio_wait, Audio_start, Audio_play , Audio_off , Audio_pause};
 
@@ -159,7 +167,7 @@ int AudioTick(int state) {
 		case Audio_wait: 
 				//LCD_DisplayString(1, "wait");
 				if(menu == false) {
-					state = Audio_pause;
+					state = Audio_start;
 					beat = 0;
 				}
 			break;
@@ -168,7 +176,7 @@ int AudioTick(int state) {
 			break;
 		case Audio_play:
 				//LCD_DisplayString(1, "play");
-				if(scale.stop[scale.current] <= beat && pause == false) {
+				if(beat >= scale.stop[scale.current] && pause == false) {
 					state = Audio_off;
 					scale.current += 1;
 				} else if(pause == true) {
@@ -178,7 +186,7 @@ int AudioTick(int state) {
 			break;
 		case Audio_off:
 				//LCD_DisplayString(1, "off");
-				if(scale.start[scale.current] <= beat && pause == false) {
+				if(beat >= scale.start[scale.current] && pause == false) {
 					state = Audio_start;
 				} else if(pause == true) {
 					state = Audio_pause;
@@ -192,6 +200,8 @@ int AudioTick(int state) {
 						state = Audio_start;
 					} else if(scale.stop[scale.current] <= beat) {
 						state = Audio_off;
+					} else {
+						state = Audio_play;
 					}
 				} else if(menu == true) {
 					state = Audio_wait;
@@ -200,18 +210,14 @@ int AudioTick(int state) {
 		default: state = Audio_wait;
 			break;
 	}
-
+	
 	//State machine actions
 	switch(state) {
 		case Audio_wait: set_PWM(0);
 			break;
 		case Audio_start: set_PWM(scale.tone[scale.current]);
-					LCD_WriteData(scale.direction[scale.current]);
-// 				TimerSet(1000);
-// 				while(!TimerFlag);
-// 				TimerFlag = 0;
 			break;
-		case Audio_play: //set_PWM(scale.tone[scale.current]);
+		case Audio_play: 
 			break;
 		case Audio_off: set_PWM(0);
 			break;
@@ -221,26 +227,13 @@ int AudioTick(int state) {
 			break;
 	}
 	
-	if(scale.max <= beat && menu == false && pause == false) {
+	
+	if(beat > scale.max && menu == false && pause == false) {
 		state = Audio_wait;
 		scale.current = 0;
-		menu = true;
+		song_over = true;
+		beat = 0;
 	}
-	
-// 	if(scale.max <= beat && menu == false && pause == false) {
-// // 		unsigned char buffer[10];
-// // 		itoa(scale.max, buffer, 10);
-// 		//LCD_WriteData(beat);
-// 		//LCD_DisplayString(1, buffer);
-// 		//LCD_DisplayString(1, "end of song");
-// 		beat = 0;
-// 		state = Audio_wait;
-// 		scale.current = 0;
-// 	} else if(menu == true) {
-// 		beat = 0;
-// 		state = Audio_wait;
-// 		scale.current = 0;
-// 	}
 
 	return state;
 }
@@ -294,8 +287,10 @@ int LCDTick(int state) {
 		case LCD_max: state = LCD_menuDisplay; menu = true; pause = false;
 			break;
 		case LCD_current: state = LCD_gameDisplay; menu = false; pause = false;
-				if(menu == true) {
+				if(song_over == true) {
 					state = LCD_start;
+					menu = true;
+					pause = false;
 				}
 			break;
 		case LCD_menuDisplay:
@@ -312,6 +307,15 @@ int LCDTick(int state) {
 					state = LCD_current;
 				} else if(pause && button == '0') {
 					state = LCD_start;
+				} else if(scoreChange && !pause) {
+					state = LCD_current;
+					scoreChange = false;
+				}
+				
+				if(song_over == true) {
+					state = LCD_start;
+					menu = true;
+					pause = false;
 				}
 			break;
 		case LCD_pause: state = LCD_gameDisplay;
@@ -409,7 +413,7 @@ int main()
 
 	// Period for the tasks
 	unsigned long int SNESTick_calc = 50;
-	unsigned long int AudioTick_calc = 500;
+	unsigned long int AudioTick_calc = 250;
 	unsigned long int LEDTick_calc = 50;
 	unsigned long int LCDTick_calc = 50;
 

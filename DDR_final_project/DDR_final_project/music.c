@@ -1,11 +1,13 @@
 
+enum directions {zero, up, down, left, right, upDark, downDark, leftDark, rightDark};
+
 
 struct music {
 	double* tone;
 	unsigned char* start;
 	unsigned char* stop;
 	unsigned char* direction;
-	unsigned short current;
+	unsigned char current;
 	unsigned int max;
 	};
 
@@ -25,16 +27,22 @@ struct music {
 // 	return song;
 // }
 
+const static double tones[] = {c4, d4, e4, f4, g4, a4, b4, c5, b4, a4, g4, f4, e4, d4, c4};
+const static unsigned char starts[] = {0, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
+const static unsigned char stops[] = {2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+const static unsigned char directionS[] = {up, right, up, right, up, right, up, right, down, right, down, right, down, right, down};
+
 struct music cScale(struct music song) {
-	double tones[] = {c4, d4, e4, f4, g4, a4, b4, c5, b4, a4, g4, f4, e4, d4, c4};
-	unsigned char starts[] = {10, 30, 50, 70, 90, 110, 130, 150, 170, 190, 210, 230, 250, 270, 290};
-	unsigned char stops[] = {20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300};
-	//unsigned char directions[] = {up, right, up, right, up, right, up, right, down, right, down, right, down, right, down};
+	//double tones[] = {c4, d4, e4, f4, g4, a4, b4, c5, b4, a4, g4, f4, e4, d4, c4};
+	//unsigned char starts[] = {0, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
+	//unsigned char stops[] = {2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	//unsigned char directionS[] = {up, right, up, right, up, right, up, right, down, right, down, right, down, right, down};
 	song.tone = tones;
 	song.start = starts;
 	song.stop = stops;
+	song.direction = directionS;
 	song.current = 0;
-	song.max = 300;
+	song.max = 30;
 	return song;
 }
 
