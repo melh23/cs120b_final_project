@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <io.c>
 #include <string.h>
-#include <keypad.h>
 #include <score.c>
 #include <music.c>
 #include <snes.c>
@@ -38,10 +37,10 @@ typedef struct _task {
 
 //--------End Task scheduler data structure-----------------------------------
 
-typedef enum {false, true} bool;
+/*typedef enum {false, true} bool;*/
 
 //--------Shared Variables----------------------------------------------------
-unsigned char button;
+unsigned char ins[12];
 unsigned char player1 = 0;
 unsigned char player2 = 0;
 bool scoreChange = false;
@@ -52,14 +51,6 @@ struct music scale;
 unsigned short beat = 0;
 bool song_over = false;
 
-// #define up 0x01
-// #define down 0x02
-// #define left 0x03
-// #define right 0x04
-// #define upDark 0x05
-// #define downDark 0x06
-// #define leftDark 0x07
-// #define rightDark 0x08
 
 //--------End Shared Variables------------------------------------------------
 
@@ -73,27 +64,24 @@ enum SNES_SM { SNES_wait, SNES_press, SNES_hold };
 int SNESInputTick(int state) {
 	
 	//get input from controller
-// 	button = GetSNESIn();
-// 	player1 = mapSNESIn(button, 1);
+ 	unsigned short button = GetSNESIn();
+	PORTB = (PORTB & 0x00) | button;
+	mapPlayerInput(button, ins);
+//  player1 = mapSNESIn(button, 1);
 // 	player2 = mapSNESIn(button, 2);
-// 	menu = mapSNESIn(button, 0);
-	button = GetKeypadKey();
-	
-	//button = getData();
+//  menu = mapSNESIn(button, 0);
 	
 	//State machine transitions
 	switch (state) {
 		case SNES_wait: pressed = 0;
-				// if (!button.empty()) {	// If there are items in button, an input has been entered
-				if(button != '\0') {
+				if(button != 0) {
 					state = SNES_press;
 				}
 			break;
 		case SNES_press: state = SNES_hold;	pressed = 1;
 			break;
 		case SNES_hold:
-				//if(button.empty()) {	// If there are no items in button, no input is currently available
-				if(button == '\0') {
+				if(!button) {
 					state = SNES_wait;
 				}
 			break;
@@ -103,38 +91,16 @@ int SNESInputTick(int state) {
 
 	//State machine actions
 	switch(state) {
-		case SNES_wait: //PORTB = 0x00;	
+		case SNES_wait:
 			break;
 		case SNES_press:
-				//PORTB = 0xFF;
 				switch(button) {
-					case 'A': if(player1 < 240 && !menu) player1 += 10; scoreChange = true;
+					case 2048: if(player1 < 240 && !menu) player1 += 10; scoreChange = true;
+							//LCD_DisplayString(1, "R");
 						break;
-					case 'B': if(player1 > 10 && !menu) player1 -= 10; scoreChange = true;
-						break;
-					case 'C': if(player2 < 240 && !menu) player2 += 10; scoreChange = true;
-						break;
-					case 'D': if(player2 > 10 && !menu) player2 -= 10; scoreChange = true;
-						break;
-					case '5': writeMax(0x00);
-						break;
-					case '*': 
-							if(menu) {	//display newly defined chars
-								LCD_WriteData(up);
-								LCD_WriteData(down);
-								LCD_WriteData(left);
-								LCD_WriteData(right);
-								LCD_WriteData(upDark);
-								LCD_WriteData(downDark);
-								LCD_WriteData(leftDark);
-								LCD_WriteData(rightDark);
-							}
-						break;
-					case '#':  
-							if(menu) {
-								unsigned char str[] = {'a', up, 'a', '\0'};
-								LCD_DisplayString(1, str);
-							}
+					case 1024: if(player1 > 10 && !menu) player1 -= 10; scoreChange = true;
+							//if(menu) {writeMax(0x00);}
+							//LCD_DisplayString(1, "L");
 						break;
 					default:
 						break;
@@ -278,14 +244,19 @@ int LCDTick(int state) {
 		case LCD_start: state = LCD_main; menu = true; pause = false; song_over = false; player1 = 0; player2 = 0;
 		case LCD_main: 
 				menu = true; pause = false;
-				switch(button) {
-					case 'A': state = LCD_current;
-						break;
-					case 'B': state = LCD_max;
-						break;
-					default: state = LCD_main;
-						break;
-				}
+				if(inputContains(ins, Select)) {
+					state = LCD_current;
+				} else if(inputContains(ins, L)) {
+					state = LCD_max;
+				} 
+// 				switch(button) {
+// 					case 'A': state = LCD_current;
+// 						break;
+// 					case 'B': state = LCD_max;
+// 						break;
+// 					default: state = LCD_main;
+// 						break;
+// 				}
 			break;
 		case LCD_max: state = LCD_menuDisplay; menu = true; pause = false;
 			break;
@@ -298,17 +269,17 @@ int LCDTick(int state) {
 			break;
 		case LCD_menuDisplay:
 				menu = true;
-				if(button == '0') {
+				if(inputContains(ins, Start)/*button == '0'*/) {
 					state = LCD_start;
 				}
 			break;
 		case LCD_gameDisplay:
 				menu = false;
-				if(button == '#' && !pause) {
+				if(inputContains(ins, Select)/*button == '#'*/ && !pause) {	//pause game
 					state = LCD_pause;
-				} else if(button == '*' && pause) {
+				} else if(inputContains(ins, A)/*button == '*'*/ && pause) {	//resume game
 					state = LCD_current;
-				} else if(pause && button == '0') {
+				} else if(pause && inputContains(ins, Start)/*button == '0'*/) {		//return to main menu from paused game
 					state = LCD_start;
 				} else if(scoreChange && !pause) {
 					state = LCD_current;
@@ -364,6 +335,16 @@ int LCDTick(int state) {
 				//unsigned char* currentScores = updateLCDString(player1, player2);
 				//LCD_DisplayString(1, currentScores);
 				
+				unsigned char maxScore = readMax();
+				if(player1 > maxScore) {
+					maxScore = player1;
+					writeMax(player1);
+				}
+				if(player2 > maxScore) {
+					maxScore = player2;
+					writeMax(player2);
+				}
+				
 				pause = false;
 				menu = false;
 				
@@ -380,8 +361,6 @@ int LCDTick(int state) {
 				
 				LCD_ClearScreen();
 				LCD_DisplayString(1, printout);
-				
-				//PORTB = (PORTB & 0x00) | player1;
 			}
 	 		break;
 		case LCD_pause: 
@@ -403,9 +382,9 @@ int main()
 	//port A and B are for LCD
 	//port C is for LED  //temporarily for keypad
 	//port D is for audio
-	DDRA = 0xFF; PORTA = 0x00;
+	DDRA = 0xFE; PORTA = 0x01;	//need input for snes controller
 	DDRB = 0xFF; PORTB = 0x00;
-	DDRC = 0xF0; PORTC = 0x0F; //was F0 and 0F for keypad
+	DDRC = 0xFF; PORTC = 0x00; //was F0 and 0F for keypad
 	DDRD = 0xFF; PORTD = 0x00;
 	
 	//for DDRX:

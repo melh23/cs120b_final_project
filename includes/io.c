@@ -10,25 +10,14 @@
 /*-------------------------------------------------------------------------*/
 
 #define DATA_BUS PORTD		// port connected to pins 7-14 of LCD display
-#define CONTROL_BUS PORTA	// port connected to pins 4-6 of LCD display
+#define CONTROL_BUS PORTC	// port connected to pins 4-6 of LCD display
 #define DATA_CMD DDRD		// ddrx connected to pins 7-14 of LCD display
-#define CONTROL_CMD DDRA	// ddrx connected to pins 4-6 of LCD display
-#define RS 0			// pin number of uC connected to pin 4 of LCD disp.
+#define CONTROL_CMD DDRC	// ddrx connected to pins 4-6 of LCD display
+#define RS 2			// pin number of uC connected to pin 4 of LCD disp.
 #define RW 1		//pin number of uC connected to pin 5 of LCD disp.
-#define E 2			// pin number of uC connected to pin 6 of LCD disp.
+#define E 0			// pin number of uC connected to pin 6 of LCD disp.
 
 /*-------------------------------------------------------------------------*/
-
-// #define up 0x00
-// #define down 0x01
-// #define left 0x02
-// #define right 0x03
-// #define upDark 0x04
-// #define downDark 0x05
-// #define leftDark 0x06
-// #define rightDark 0x07
-
-
 
 //may want to save these onto EEPROM? idk
 const static unsigned char upA[8] = {0x04, 0x0A, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -62,7 +51,6 @@ void LCD_init(void) {
 
 void LCD_WriteCommand (unsigned char Command) {
    CLR_BIT(CONTROL_BUS,RS);
-   //CLR_BIT(CONTROL_BUS, RW);	//added to input new chars
    DATA_BUS = Command;
    SET_BIT(CONTROL_BUS,E);
    asm("nop");
@@ -72,7 +60,6 @@ void LCD_WriteCommand (unsigned char Command) {
 
 void LCD_WriteData(unsigned char Data) {
    SET_BIT(CONTROL_BUS,RS);
-   //CLR_BIT(CONTROL_BUS, RW);	//added to input new chars
    DATA_BUS = Data;
    SET_BIT(CONTROL_BUS,E);
    asm("nop");
@@ -110,13 +97,13 @@ void delay_ms(int miliSec) //for 8 Mhz crystal
 }
 
 //Custom charachter fxns
-void LCD_WriteCustom(unsigned char address, unsigned char* symbol) {
-	LCD_WriteCommand(0x40 + (address*8));	//for ccgram
-	for(unsigned int i = 0; i < 8; i++) {
-		LCD_WriteData(symbol[i]);
-	}
-	LCD_WriteCommand(0x80);
-}
+// void LCD_WriteCustom(unsigned char address, unsigned char* symbol) {
+// 	LCD_WriteCommand(0x40 + (address*8));	//for ccgram
+// 	for(unsigned int i = 0; i < 8; i++) {
+// 		LCD_WriteData(symbol[i]);
+// 	}
+// 	LCD_WriteCommand(0x80);
+// }
 
 void LCD_LoadChar(unsigned char address, unsigned char* symbol) {
 	LCD_WriteCommand(0x40 + (address*8));	//for ccgram
