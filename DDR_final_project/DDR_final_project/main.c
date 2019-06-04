@@ -41,8 +41,8 @@ typedef struct _task {
 
 //--------Shared Variables----------------------------------------------------
 unsigned char ins[12];
-unsigned char player1 = 0;
-unsigned char player2 = 0;
+unsigned int player1 = 0;
+unsigned int player2 = 0;
 bool scoreChange = false;
 unsigned char pressed = 0;
 bool menu = true;
@@ -50,7 +50,9 @@ bool pause = false;
 struct music scale; 
 unsigned short beat = 0;
 bool song_over = false;
-
+bool prevIns[12];
+unsigned char* wholeSong;
+unsigned char* displayString;
 
 //--------End Shared Variables------------------------------------------------
 
@@ -94,16 +96,18 @@ int SNESInputTick(int state) {
 		case SNES_wait:
 			break;
 		case SNES_press:
-				switch(button) {
-					case 2048: if(player1 < 240 && !menu) player1 += 10; scoreChange = true;
-							//LCD_DisplayString(1, "R");
-						break;
-					case 1024: if(player1 > 10 && !menu) player1 -= 10; scoreChange = true;
-							//if(menu) {writeMax(0x00);}
-							//LCD_DisplayString(1, "L");
-						break;
-					default:
-						break;
+				if(menu && inputContains(ins, L) && inputContains(ins, R)) {
+					writeMax(0x00);
+				}
+				if(!menu && !pause) {
+					if(player1 < 240 && inputContains(ins, R)) {
+						player1 += 10;
+						scoreChange = true;
+					}
+					if(player1 > 9 && inputContains(ins, L)) {
+						player1 -= 10;
+						scoreChange = true;
+					}
 				}
 			break;
 		case SNES_hold:	
@@ -207,30 +211,39 @@ int AudioTick(int state) {
 	return state;
 }
 
-//LED SM
-enum LED_SM { LED_wait };
+//Timer SM
+enum TIMER_SM { Timer_wait, Timer_update };
 	
-int LEDTick(int state) {
+int TimerTick(int state) {
 	
 	//State machine transitions
 	switch (state) {
-		case LED_wait: state = LED_wait;
+		case Timer_wait: 
+				if(!menu && !pause) {
+					state = Timer_update;
+				}
 			break;
-// 		case :
-// 			break;
-		default: state = LED_wait;
+ 		case Timer_update:
+				if(menu || pause) {
+					state = Timer_wait;
+				}
+ 			break;
+		default: state = Timer_wait;
 			break;
 	}
 
 	//State machine actions
-// 	switch(state) {
-// 		case :
-// 			break;
-// 		case :
-// 			break;
-// 		default: state = ;
-// 			break;
-// 	}
+	switch(state) {
+		case Timer_wait:
+			break;
+		case Timer_update:
+				displayString = updateSongString(wholeSong, beat, displayString, scale.max, player1, player2);
+				LCD_ClearScreen();
+				LCD_DisplayString(1, displayString);
+			break;
+		default:
+			break;
+	}
 	return state;
 }
 
@@ -249,14 +262,6 @@ int LCDTick(int state) {
 				} else if(inputContains(ins, L)) {
 					state = LCD_max;
 				} 
-// 				switch(button) {
-// 					case 'A': state = LCD_current;
-// 						break;
-// 					case 'B': state = LCD_max;
-// 						break;
-// 					default: state = LCD_main;
-// 						break;
-// 				}
 			break;
 		case LCD_max: state = LCD_menuDisplay; menu = true; pause = false;
 			break;
@@ -269,17 +274,17 @@ int LCDTick(int state) {
 			break;
 		case LCD_menuDisplay:
 				menu = true;
-				if(inputContains(ins, Start)/*button == '0'*/) {
+				if(inputContains(ins, Start)) {
 					state = LCD_start;
 				}
 			break;
 		case LCD_gameDisplay:
 				menu = false;
-				if(inputContains(ins, Select)/*button == '#'*/ && !pause) {	//pause game
+				if(inputContains(ins, Select) && !pause) {	//pause game
 					state = LCD_pause;
-				} else if(inputContains(ins, A)/*button == '*'*/ && pause) {	//resume game
+				} else if(inputContains(ins, A) && pause) {	//resume game
 					state = LCD_current;
-				} else if(pause && inputContains(ins, Start)/*button == '0'*/) {		//return to main menu from paused game
+				} else if(pause && inputContains(ins, Start)) {		//return to main menu from paused game
 					state = LCD_start;
 				} else if(scoreChange && !pause) {
 					state = LCD_current;
@@ -302,25 +307,28 @@ int LCDTick(int state) {
 	
 	//State machine actions
 	switch (state) {
-		case LCD_start:
+		case LCD_start: {
+				//save max score
+				unsigned char maxScore = readMax();
+				if(player1 > maxScore) {
+					maxScore = player1;
+					writeMax(player1);
+				}
+				if(player2 > maxScore) {
+					maxScore = player2;
+					writeMax(player2);
+				}
+				
 				LCD_ClearScreen();
 				LCD_DisplayString(1, "Main menu");
 				menu = true;
 				pause = false;
+			}
 	 		break;
 		case LCD_main: 
 			break;
 	 	case LCD_max:{
 				 unsigned char maxScore = readMax();
-				 if(player1 > maxScore) {
-					maxScore = player1;
-					writeMax(player1);
-				 }
-				 if(player2 > maxScore) {
-					maxScore = player2;
-					writeMax(player2);
-				 }
-				 
 				 unsigned char buffer[10];
 				 unsigned char printout[34] = "Max Score: ";
 				 itoa(maxScore, buffer, 10);
@@ -335,6 +343,27 @@ int LCDTick(int state) {
 				//unsigned char* currentScores = updateLCDString(player1, player2);
 				//LCD_DisplayString(1, currentScores);
 				
+				
+				//this will not be here
+				pause = false;
+				menu = false;
+				
+// 				unsigned char buffer1[10];
+// 				unsigned char buffer2[10];
+// 				
+// 				itoa(player1, buffer1, 10);
+// 				itoa(player2, buffer2, 10);
+// 				
+// 				unsigned char printout[34] = "Player 1: ";
+// 				strcat(printout, buffer1);
+// 				strcat(printout, "     Player 2: ");
+// 				strcat(printout, buffer2);
+// 				
+// 				LCD_ClearScreen();
+// 				LCD_DisplayString(1, printout);
+			}
+	 		break;
+		case LCD_pause: {
 				unsigned char maxScore = readMax();
 				if(player1 > maxScore) {
 					maxScore = player1;
@@ -344,29 +373,11 @@ int LCDTick(int state) {
 					maxScore = player2;
 					writeMax(player2);
 				}
-				
-				pause = false;
-				menu = false;
-				
-				unsigned char buffer1[10];
-				unsigned char buffer2[10];
-				
-				itoa(player1, buffer1, 10);
-				itoa(player2, buffer2, 10);
-				
-				unsigned char printout[34] = "Player 1: ";
-				strcat(printout, buffer1);
-				strcat(printout, "     Player 2: ");
-				strcat(printout, buffer2);
-				
-				LCD_ClearScreen();
-				LCD_DisplayString(1, printout);
-			}
-	 		break;
-		case LCD_pause: 
+		
 				pause = true;
 				LCD_ClearScreen();
 				LCD_DisplayString(1, "Paused!");
+			}
 			break;	
 	 	default:
 	 		break;
@@ -374,7 +385,6 @@ int LCDTick(int state) {
 	
 	return state;
 }
-
 
 // Implement scheduler code from PES.
 int main()
@@ -384,25 +394,23 @@ int main()
 	//port D is for audio
 	DDRA = 0xFE; PORTA = 0x01;	//need input for snes controller
 	DDRB = 0xFF; PORTB = 0x00;
-	DDRC = 0xFF; PORTC = 0x00; //was F0 and 0F for keypad
+	DDRC = 0xFF; PORTC = 0x00;	//was F0 and 0F for keypad
 	DDRD = 0xFF; PORTD = 0x00;
 	
 	//for DDRX:
 	//0 for output
 	//1 for input
 
-	LCD_LoadCustomChars();
-
 	// Period for the tasks
 	unsigned long int SNESTick_calc = 50;
-	unsigned long int AudioTick_calc = 250;
-	unsigned long int LEDTick_calc = 50;
+	unsigned long int AudioTick_calc = 100;
+	unsigned long int TimerTick_calc = 50;
 	unsigned long int LCDTick_calc = 50;
 
 	//Calculating GCD
 	unsigned long int tmpGCD = 1;
 	tmpGCD = findGCD(SNESTick_calc, AudioTick_calc);
-	tmpGCD = findGCD(tmpGCD, LEDTick_calc);
+	tmpGCD = findGCD(tmpGCD, TimerTick_calc);
 	tmpGCD = findGCD(tmpGCD, LCDTick_calc);
 
 	//Greatest common divisor for all tasks or smallest time unit for tasks.
@@ -411,7 +419,7 @@ int main()
 	//Recalculate GCD periods for scheduler
 	unsigned long int SNESTick_period = SNESTick_calc/GCD;
 	unsigned long int AudioTick_period = AudioTick_calc/GCD;
-	unsigned long int LEDTick_period = LEDTick_calc/GCD;
+	unsigned long int TimerTick_period = TimerTick_calc/GCD;
 	unsigned long int LCDTick_period = LCDTick_calc/GCD;
 
 	//Declare an array of tasks 
@@ -433,9 +441,9 @@ int main()
 
 	// Task 3
 	task3.state = -1;//Task initial state.
-	task3.period = LEDTick_period;//Task Period.
-	task3.elapsedTime = LEDTick_period; // Task current elasped time.
-	task3.TickFct = &LEDTick; // Function pointer for the tick.
+	task3.period = TimerTick_period;//Task Period.
+	task3.elapsedTime = TimerTick_period; // Task current elasped time.
+	task3.TickFct = &TimerTick; // Function pointer for the tick.
 
 	// Task 4
 	task4.state = -1;//Task initial state.
@@ -447,12 +455,17 @@ int main()
 	TimerSet(GCD);
 	TimerOn();
 	LCD_init();
+	LCD_LoadCustomChars();
 	scale = cScale(scale);
 	PWM_on();
+	unsigned char whole[scale.max + 3];
+	unsigned char display[33];
+	wholeSong = whole;
+	displayString = display;
+	wholeSong = generateSongString(scale, wholeSong);
 
 	unsigned short i; // Scheduler for-loop iterator
 	while(1) {
-	
 		// Scheduler code
 		for ( i = 0; i < numTasks; i++ ) {
 			// Task is ready to tick
