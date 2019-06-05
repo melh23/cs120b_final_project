@@ -10,9 +10,6 @@ typedef enum {false, true} bool;
 #define CLR_BIT(p,i) ((p) &= ~(1 << (i)))
 #define GET_BIT(p,i) ((p) & (1 << (i)))
 
-#define PORT PORTA
-#define PIN PINA
-
 #define CLOCK  2 // Output
 #define LATCH  1 // Output
 #define DATA   0 // Input
@@ -23,28 +20,31 @@ unsigned short GetSNESIn()
 {
 	unsigned short data = 0x0000;
 	
-	PORT = SetBit(PIN, LATCH, 1);
+	//request data from controller
+	PORTA = SetBit(PINA, LATCH, 1);
 	_delay_us(12);
-	PORT = SetBit(PIN, LATCH, 0);
+	PORTA = SetBit(PINA, LATCH, 0);
 	_delay_us(6);
 
+	//read data
 	for (unsigned char i = 0; i < 12; i++) {
-		if(!GetBit(PIN, DATA)) {
+		if(!GetBit(PINA, DATA)) {
 			SET_BIT(data, i);
 		} else {
 			CLR_BIT(data, i);
 		}
 		
-		PORT = SetBit(PIN, CLOCK, 1);
+		//tick clock and wait for next bit 
+		PORTA = SetBit(PINA, CLOCK, 1);
 		_delay_us(6);
-		PORT = SetBit(PIN, CLOCK, 0);
+		PORTA = SetBit(PINA, CLOCK, 0);
 		_delay_us(6);
 	}
 
 	return data;
 }
 
-/*unsigned char**/void mapPlayerInput(unsigned short rawInput, unsigned char* ins) {
+void mapPlayerInput(unsigned short rawInput, unsigned char* ins) {
 	unsigned char count = 0;
 	for(unsigned char i = 0; i < 12; i++) {
 		if(GET_BIT(rawInput, i)) {
@@ -53,7 +53,6 @@ unsigned short GetSNESIn()
 		}
 	}
 	ins[count] = 0;
-	//return ins;
 }
 
 bool inputContains(unsigned char* ins, unsigned char input) {
@@ -67,23 +66,4 @@ bool inputContains(unsigned char* ins, unsigned char input) {
 	return false;
 }
 
-// unsigned char mapPlayerInput(unsigned short rawInput) {
-// 	unsigned char count = 0;
-// 	for(unsigned int i = 0; i < 12; i++) {
-// 		if(getNext(rawInput)) {
-// 			
-// 		}
-// 	}
-// }
 
-unsigned char mapSNESIn(unsigned short rawInput, unsigned int player) {
-	
-	switch(player) {
-		case 0: 
-			break;
-		case 1: 
-			break;
-		case 2: 
-			break;
-	}
-}

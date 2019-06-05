@@ -58,20 +58,16 @@ unsigned char* displayString;
 
 
 //--------User defined FSMs---------------------------------------------------
-//Enumeration of states.
+
+//SNES SM
 enum SNES_SM { SNES_wait, SNES_press, SNES_hold };
 
-// Monitors button connected to PA0. 
-// When button is pressed, shared variable "pause" is toggled.
 int SNESInputTick(int state) {
 	
 	//get input from controller
  	unsigned short button = GetSNESIn();
-	PORTB = (PORTB & 0x00) | button;
+	PORTB = (PORTB & 0x00) | button;	//for debugging
 	mapPlayerInput(button, ins);
-//  player1 = mapSNESIn(button, 1);
-// 	player2 = mapSNESIn(button, 2);
-//  menu = mapSNESIn(button, 0);
 	
 	//State machine transitions
 	switch (state) {
@@ -95,11 +91,11 @@ int SNESInputTick(int state) {
 	switch(state) {
 		case SNES_wait:
 			break;
-		case SNES_press:
-				if(menu && inputContains(ins, L) && inputContains(ins, R)) {
+		case SNES_press:	//cheat codes ;)
+				if(menu && inputContains(ins, L) && inputContains(ins, R)) {	//L and R @ same time resets max score
 					writeMax(0x00);
 				}
-				if(!menu && !pause) {
+				if(!menu && !pause) {		//change P1 score while game is running
 					if(player1 < 240 && inputContains(ins, R)) {
 						player1 += 10;
 						scoreChange = true;
@@ -133,7 +129,6 @@ int AudioTick(int state) {
 	//State machine transitions
 	switch (state) {
 		case Audio_wait: 
-				//LCD_DisplayString(1, "wait");
 				beat = 0;
 				if(menu == false) {
 					if(beat < scale.start[scale.current]) {
@@ -144,10 +139,8 @@ int AudioTick(int state) {
 				}
 			break;
 		case Audio_start: state = Audio_play;
-				//LCD_DisplayString(1, "start");
 			break;
 		case Audio_play:
-				//LCD_DisplayString(1, "play");
 				if(beat >= scale.stop[scale.current] && pause == false) {
 					state = Audio_off;
 					scale.current += 1;
@@ -157,7 +150,6 @@ int AudioTick(int state) {
 				beat += 1;
 			break;
 		case Audio_off:
-				//LCD_DisplayString(1, "off");
 				if(beat >= scale.start[scale.current] && pause == false) {
 					state = Audio_start;
 				} else if(pause == true) {
@@ -166,7 +158,6 @@ int AudioTick(int state) {
 				beat += 1;
 			break;
 		case Audio_pause:
-				//LCD_DisplayString(1, "pause");
 				if(pause == false && menu == false) {
 					if(scale.start[scale.current] <= beat) {
 						state = Audio_start;
@@ -200,6 +191,7 @@ int AudioTick(int state) {
 			break;
 	}
 	
+	//when at end of song, return to main menu
 	if(beat > scale.max && menu == false && pause == false) {
 		state = Audio_wait;
 		scale.current = 0;
@@ -211,13 +203,14 @@ int AudioTick(int state) {
 }
 
 //Timer SM
+//basically in game display tick
 enum TIMER_SM { Timer_wait, Timer_update };
 	
 int TimerTick(int state) {
 	
 	//State machine transitions
 	switch (state) {
-		case Timer_wait: 
+		case Timer_wait:	//as long as the game is not running, wait
 				if(!menu && !pause) {
 					state = Timer_update;
 				}
@@ -254,14 +247,26 @@ void updatePoints() {
 	
 	itoa(player1, buffer, 10);
 	for(unsigned char i = 0; i < strlen(buffer); i++) {
-		LCD_Cursor(20 + i);
+		LCD_Cursor(20 + i);	//P1: at very beginning of 2nd row
 		LCD_WriteData(buffer[i]);
 	}
 	
 	itoa(player2, buffer, 10);
 	for(unsigned char i = 0; i < strlen(buffer); i++) {
-		LCD_Cursor(27 + i);
+		LCD_Cursor(27 + i);	//P2: at middle of 2nd row
 		LCD_WriteData(buffer[i]);
+	}
+}
+
+void updateMax() {
+	unsigned char maxScore = readMax();
+	if(player1 > maxScore) {
+		maxScore = player1;
+		writeMax(player1);
+	}
+	if(player2 > maxScore) {
+		maxScore = player2;
+		writeMax(player2);
 	}
 }
 
@@ -304,11 +309,9 @@ int LCDTick(int state) {
 					state = LCD_current;
 				} else if(pause && inputContains(ins, Start)) {		//return to main menu from paused game
 					state = LCD_start;
- 				} //else if(scoreChange && !pause) {
-// 					state = LCD_current;
-// 					scoreChange = false;
-// 				}
+ 				}
 				
+				//return to main menu at end of song
 				if(song_over == true) {
 					state = LCD_start;
 					menu = true;
@@ -327,16 +330,7 @@ int LCDTick(int state) {
 	switch (state) {
 		case LCD_start: {
 				//save max score
-				unsigned char maxScore = readMax();
-				if(player1 > maxScore) {
-					maxScore = player1;
-					writeMax(player1);
-				}
-				if(player2 > maxScore) {
-					maxScore = player2;
-					writeMax(player2);
-				}
-				
+				updateMax();
 				LCD_ClearScreen();
 				LCD_DisplayString(1, "Main menu");
 				menu = true;
@@ -357,31 +351,20 @@ int LCDTick(int state) {
 				 LCD_DisplayString(1, printout);
 			 }
 	 		break;
-	 	case LCD_current:{
-				//this will not be here
+	 	case LCD_current:
 				pause = false;
 				menu = false;
 				
+				//set up point display for game
 				unsigned char play[32] = "                P1:    P2:     ";
 				LCD_DisplayString(1, play);
 				updatePoints();
-			}
 	 		break;
-		case LCD_pause: {
-				unsigned char maxScore = readMax();
-				if(player1 > maxScore) {
-					maxScore = player1;
-					writeMax(player1);
-				}
-				if(player2 > maxScore) {
-					maxScore = player2;
-					writeMax(player2);
-				}
-		
+		case LCD_pause: 
+				updateMax();
 				pause = true;
 				LCD_ClearScreen();
 				LCD_DisplayString(1, "Paused!");
-			}
 			break;	
 	 	default:
 	 		break;

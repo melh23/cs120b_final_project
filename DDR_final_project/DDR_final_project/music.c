@@ -23,33 +23,23 @@ struct music {
 #define b4 493.88
 #define c5 523.25
 
-// music pianoMan(struct music song) {
-// 	song.tone = {};
-// 	song.start = {};
-// 	song.stop = {};
-// 	return song;
-// }
-
-const static double tones[] = {c4, d4, e4, f4, g4, a4, b4, c5, b4, a4, g4, f4, e4, d4, c4};
-const static unsigned char starts[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
-const static unsigned char stops[] = {2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
-const static unsigned char directionS[] = {up, right, up, right, up, right, up, right, down, right, down, right, down, right, down};
+const static double scaleTones[] = {c4, d4, e4, f4, g4, a4, b4, c5, b4, a4, g4, f4, e4, d4, c4};
+const static unsigned char scaleStarts[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
+const static unsigned char scaleStops[] = {2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+const static unsigned char scaleDirections[] = {up, right, up, right, up, right, up, right, down, right, down, right, down, right, down};
+const static unsigned int scaleMax = 30;
+const static unsigned char scaleTone = 15;
 
 struct music cScale(struct music song) {
-	//double tones[] = {c4, d4, e4, f4, g4, a4, b4, c5, b4, a4, g4, f4, e4, d4, c4};
-	//unsigned char starts[] = {0, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
-	//unsigned char stops[] = {2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
-	//unsigned char directionS[] = {up, right, up, right, up, right, up, right, down, right, down, right, down, right, down};
-	song.tone = tones;
-	song.start = starts;
-	song.stop = stops;
-	song.direction = directionS;
+	song.tone = scaleTones;
+	song.start = scaleStarts;
+	song.stop = scaleStops;
+	song.direction = scaleDirections;
 	song.current = 0;
-	song.max = 30;
-	song.tones = 15;
+	song.max = scaleMax;
+	song.tones = scaleTone;
 	return song;
 }
-
 
 unsigned char* updateSongString(unsigned char* wholeSong, unsigned char beat, unsigned char* currentStr, unsigned char maxLength) {
 	//input characters
@@ -62,27 +52,6 @@ unsigned char* updateSongString(unsigned char* wholeSong, unsigned char beat, un
 	}
 	
  	currentStr[16] = '\0';
-// 	unsigned char buffer[10];
-// 	
-// 	//add player 1 score
-// 	strcat(currentStr, "P1:");
-// 	itoa(p1, buffer, 10);
-// 	strcat(currentStr, buffer);
-// 	
-// 	//pad space after player 1 score
-// 	while(strlen(currentStr) < 24) {
-// 		strcat(currentStr, " ");
-// 	}
-// 	
-// 	//add player 2 score
-// 	strcat(currentStr, "P2:");
-// 	itoa(p2, buffer, 10);
-// 	strcat(currentStr, buffer);
-// 	
-// 	//pad space after player 2 score
-// 	while(strlen(currentStr) < 32){
-// 		strcat(currentStr, " ");
-// 	}
 
 	return currentStr;
 }
@@ -96,10 +65,14 @@ unsigned char* generateSongString(struct music song, unsigned char* str) {
 		if(song.start[current] == i) {
 			str[i] = song.direction[current];
 			current++;
-			} else {
+		} else {
 			str[i] = ' ';
 		}
 	}
+	
+// 	strcpy(str, padding);
+// 	strcat(str, s);
+// 	strcat(str, padding);
 	
 	return str;
 }
