@@ -51,45 +51,47 @@ struct music cScale(struct music song) {
 }
 
 
-unsigned char* updateSongString(unsigned char* wholeSong, unsigned char beat, unsigned char* currentStr, unsigned char maxLength, unsigned int p1, unsigned int p2) {
-	
-	//TimerSet(4000);
-	
+unsigned char* updateSongString(unsigned char* wholeSong, unsigned char beat, unsigned char* currentStr, unsigned char maxLength) {
+	//input characters
 	if(beat < maxLength - 16) {
 		strncpy(currentStr, (wholeSong + beat), 16);
-		} else {
+	} else {
 		unsigned char emptystr[20] = {"                 "};
 		strcpy(currentStr, emptystr);
 		strncpy(currentStr, (wholeSong + beat), (maxLength - beat));
 	}
 	
-	currentStr[16] = '\0';
-	
-	unsigned char buffer[10];
-	
-	strcat(currentStr, "P1:");
-	itoa(p1, buffer, 10);
-	strcat(currentStr, buffer);
-	
-	while(strlen(currentStr) < 24) {
-		strcat(currentStr, " ");
-	}
-	
-	strcat(currentStr, "P2:");
-	itoa(p2, buffer, 10);
-	strcat(currentStr, buffer);
-	
-	while(strlen(currentStr) < 32){
-		strcat(currentStr, " ");
-	}
+ 	currentStr[16] = '\0';
+// 	unsigned char buffer[10];
+// 	
+// 	//add player 1 score
+// 	strcat(currentStr, "P1:");
+// 	itoa(p1, buffer, 10);
+// 	strcat(currentStr, buffer);
+// 	
+// 	//pad space after player 1 score
+// 	while(strlen(currentStr) < 24) {
+// 		strcat(currentStr, " ");
+// 	}
+// 	
+// 	//add player 2 score
+// 	strcat(currentStr, "P2:");
+// 	itoa(p2, buffer, 10);
+// 	strcat(currentStr, buffer);
+// 	
+// 	//pad space after player 2 score
+// 	while(strlen(currentStr) < 32){
+// 		strcat(currentStr, " ");
+// 	}
 
 	return currentStr;
 }
 
 unsigned char* generateSongString(struct music song, unsigned char* str) {
 	unsigned char current = 0;
-// 	str[0] = ' ';
-// 	str[1] = ' ';
+	unsigned char* padding = "                ";
+	unsigned char s[song.max + 1];
+	
 	for(unsigned char i = 0; i < song.max; i++) {
 		if(song.start[current] == i) {
 			str[i] = song.direction[current];

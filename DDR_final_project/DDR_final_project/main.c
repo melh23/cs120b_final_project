@@ -200,7 +200,6 @@ int AudioTick(int state) {
 			break;
 	}
 	
-	
 	if(beat > scale.max && menu == false && pause == false) {
 		state = Audio_wait;
 		scale.current = 0;
@@ -237,14 +236,33 @@ int TimerTick(int state) {
 		case Timer_wait:
 			break;
 		case Timer_update:
-				displayString = updateSongString(wholeSong, beat, displayString, scale.max, player1, player2);
-				LCD_ClearScreen();
-				LCD_DisplayString(1, displayString);
+				displayString = updateSongString(wholeSong, beat, displayString, scale.max);
+				LCD_DisplayStringNoClear(1, displayString);
+				if(scoreChange) {
+					updatePoints();
+					scoreChange = false;
+				}
 			break;
 		default:
 			break;
 	}
 	return state;
+}
+
+void updatePoints() {
+	unsigned char buffer[10];
+	
+	itoa(player1, buffer, 10);
+	for(unsigned char i = 0; i < strlen(buffer); i++) {
+		LCD_Cursor(20 + i);
+		LCD_WriteData(buffer[i]);
+	}
+	
+	itoa(player2, buffer, 10);
+	for(unsigned char i = 0; i < strlen(buffer); i++) {
+		LCD_Cursor(27 + i);
+		LCD_WriteData(buffer[i]);
+	}
 }
 
 //LCD SM
@@ -286,10 +304,10 @@ int LCDTick(int state) {
 					state = LCD_current;
 				} else if(pause && inputContains(ins, Start)) {		//return to main menu from paused game
 					state = LCD_start;
-				} else if(scoreChange && !pause) {
-					state = LCD_current;
-					scoreChange = false;
-				}
+ 				} //else if(scoreChange && !pause) {
+// 					state = LCD_current;
+// 					scoreChange = false;
+// 				}
 				
 				if(song_over == true) {
 					state = LCD_start;
@@ -340,27 +358,13 @@ int LCDTick(int state) {
 			 }
 	 		break;
 	 	case LCD_current:{
-				//unsigned char* currentScores = updateLCDString(player1, player2);
-				//LCD_DisplayString(1, currentScores);
-				
-				
 				//this will not be here
 				pause = false;
 				menu = false;
 				
-// 				unsigned char buffer1[10];
-// 				unsigned char buffer2[10];
-// 				
-// 				itoa(player1, buffer1, 10);
-// 				itoa(player2, buffer2, 10);
-// 				
-// 				unsigned char printout[34] = "Player 1: ";
-// 				strcat(printout, buffer1);
-// 				strcat(printout, "     Player 2: ");
-// 				strcat(printout, buffer2);
-// 				
-// 				LCD_ClearScreen();
-// 				LCD_DisplayString(1, printout);
+				unsigned char play[32] = "                P1:    P2:     ";
+				LCD_DisplayString(1, play);
+				updatePoints();
 			}
 	 		break;
 		case LCD_pause: {

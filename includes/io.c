@@ -67,6 +67,14 @@ void LCD_WriteData(unsigned char Data) {
    delay_ms(1);
 }
 
+void LCD_DisplayStringNoClear(unsigned char column, const unsigned char* string) {
+	unsigned char c = column;
+	while(*string) {
+		LCD_Cursor(c++);
+		LCD_WriteData(*string++);
+	}
+}
+
 void LCD_DisplayString(unsigned char column, const unsigned char* string) {
    LCD_ClearScreen();
    unsigned char c = column;
