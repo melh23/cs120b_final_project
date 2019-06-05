@@ -373,6 +373,85 @@ int LCDTick(int state) {
 	return state;
 }
 
+//points 
+
+void ptsCheck(unsigned char currentIns, unsigned int player) {
+	if(player == 1) {
+		if(currentIns == scale.direction[scale.current]) {
+			player1 += 1;
+			scoreChange = true;
+		}
+		if(currentIns == scale.start[scale.current]) {
+			player1 += 2;
+			scoreChange = true;
+		}
+	} else {
+		if(currentIns == scale.direction[scale.current]) {
+			player2 += 1;
+			scoreChange = true;
+		}
+		if(currentIns == scale.start[scale.current]) {
+			player2 += 2;
+			scoreChange = true;
+		}
+	}
+}
+
+
+enum POINTS_SM { Points_wait, Points_check };
+	
+int PointsTick(int state) {
+	
+	//state machine transitions
+	switch(state) {
+		case Points_wait: 
+				if(!menu && !pause) {
+					state = Points_check;
+				}
+			break;
+		case Points_check:
+				if(menu || pause) {
+					state = Points_wait;
+				}
+			break;
+		default: state = Points_wait;
+			break;
+	}
+	
+	//state machine actions
+	switch(state) {
+		case Points_wait: //LCD_DisplayString(1, "points wait");
+			break;
+		case Points_check:
+				for(unsigned char i = 0; i < 12; i++) {
+					unsigned char currentIns;
+					unsigned char player = 1;
+					switch(ins[i]) {
+						case Up: player = 2;
+						case X: currentIns = up;
+							break;
+						case Down: player = 2;
+						case B: currentIns = down;
+							break;
+						case Left: player = 2;
+						case Y: currentIns = left;
+							break;
+						case Right: player = 2;
+						case A: currentIns = right;
+							break;
+						default:currentIns = zero;
+							break;
+					}
+					ptsCheck(currentIns, player);
+				}
+			break;
+		default: //LCD_DisplayString(1, "points default");
+			break;
+	}
+	
+	return state;
+}
+
 // Implement scheduler code from PES.
 int main()
 {
@@ -393,13 +472,15 @@ int main()
 	unsigned long int AudioTick_calc = 100;
 	unsigned long int TimerTick_calc = 50;
 	unsigned long int LCDTick_calc = 50;
+	unsigned long int PointsTick_calc = 50;
 
 	//Calculating GCD
 	unsigned long int tmpGCD = 1;
 	tmpGCD = findGCD(SNESTick_calc, AudioTick_calc);
 	tmpGCD = findGCD(tmpGCD, TimerTick_calc);
 	tmpGCD = findGCD(tmpGCD, LCDTick_calc);
-
+	tmpGCD = findGCD(tmpGCD, PointsTick_calc);
+	
 	//Greatest common divisor for all tasks or smallest time unit for tasks.
 	unsigned long int GCD = tmpGCD;
 
@@ -408,10 +489,11 @@ int main()
 	unsigned long int AudioTick_period = AudioTick_calc/GCD;
 	unsigned long int TimerTick_period = TimerTick_calc/GCD;
 	unsigned long int LCDTick_period = LCDTick_calc/GCD;
+	unsigned long int PointsTick_period = PointsTick_calc/GCD;
 
 	//Declare an array of tasks 
-	static task task1, task2, task3, task4;
-	task *tasks[] = { &task1, &task2, &task3, &task4 };
+	static task task1, task2, task3, task4, task5;
+	task *tasks[] = { &task1, &task2, &task3, &task4, &task5 };
 	const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
 
 	// Task 1
@@ -437,6 +519,12 @@ int main()
 	task4.period = LCDTick_period;//Task Period.
 	task4.elapsedTime = LCDTick_period; // Task current elasped time.
 	task4.TickFct = &LCDTick; // Function pointer for the tick.
+
+	// Task 5
+	task5.state = -1;//Task initial state.
+	task5.period = PointsTick_period;//Task Period.
+	task5.elapsedTime = PointsTick_period; // Task current elasped time.
+	task5.TickFct = &PointsTick; // Function pointer for the tick.
 
 	// Set the timer and turn it on
 	TimerSet(GCD);
