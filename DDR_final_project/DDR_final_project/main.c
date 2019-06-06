@@ -41,16 +41,16 @@ typedef struct _task {
 
 //--------Shared Variables----------------------------------------------------
 unsigned char ins[12];
+unsigned char prevIns[12];
 unsigned int player1 = 0;
 unsigned int player2 = 0;
 bool scoreChange = false;
 unsigned char pressed = 0;
 bool menu = true;
 bool pause = false;
-struct music scale; 
+struct music song; 
 unsigned short beat = 0;
 bool song_over = false;
-bool prevIns[12];
 unsigned char* wholeSong;
 unsigned char* displayString;
 
@@ -131,7 +131,7 @@ int AudioTick(int state) {
 		case Audio_wait: 
 				beat = 0;
 				if(menu == false) {
-					if(beat < scale.start[scale.current]) {
+					if(beat < song.start[song.current]) {
 						state = Audio_off;
 					} else {
 						state = Audio_start;
@@ -141,16 +141,16 @@ int AudioTick(int state) {
 		case Audio_start: state = Audio_play;
 			break;
 		case Audio_play:
-				if(beat >= scale.stop[scale.current] && pause == false) {
+				if(beat >= song.stop[song.current] && pause == false) {
 					state = Audio_off;
-					scale.current += 1;
+					song.current += 1;
 				} else if(pause == true) {
 					state = Audio_pause;
 				}
 				beat += 1;
 			break;
 		case Audio_off:
-				if(beat >= scale.start[scale.current] && pause == false) {
+				if(beat >= song.start[song.current] && pause == false) {
 					state = Audio_start;
 				} else if(pause == true) {
 					state = Audio_pause;
@@ -159,16 +159,16 @@ int AudioTick(int state) {
 			break;
 		case Audio_pause:
 				if(pause == false && menu == false) {
-					if(scale.start[scale.current] <= beat) {
+					if(song.start[song.current] <= beat) {
 						state = Audio_start;
-					} else if(scale.stop[scale.current] <= beat) {
+					} else if(song.stop[song.current] <= beat) {
 						state = Audio_off;
 					} else {
 						state = Audio_play;
 					}
 				} else if(menu == true) {
 					state = Audio_wait;
-					scale.current = 0;
+					song.current = 0;
 				}
 			break;
 		default: state = Audio_wait;
@@ -179,7 +179,7 @@ int AudioTick(int state) {
 	switch(state) {
 		case Audio_wait: set_PWM(0);
 			break;
-		case Audio_start: set_PWM(scale.tone[scale.current]);
+		case Audio_start: set_PWM(song.tone[song.current]);
 			break;
 		case Audio_play: 
 			break;
@@ -192,9 +192,10 @@ int AudioTick(int state) {
 	}
 	
 	//when at end of song, return to main menu
-	if(beat > scale.max && menu == false && pause == false) {
+	if(beat > song.max && menu == false && pause == false) {
+		LCD_DisplayString(1, "end of song!");
 		state = Audio_wait;
-		scale.current = 0;
+		song.current = 0;
 		song_over = true;
 		beat = 0;
 	}
@@ -229,7 +230,7 @@ int TimerTick(int state) {
 		case Timer_wait:
 			break;
 		case Timer_update:
-				displayString = updateSongString(wholeSong, beat, displayString, scale.max);
+				displayString = updateSongString(wholeSong, beat, displayString, song.max);
 				LCD_DisplayStringNoClear(1, displayString);
 				if(scoreChange) {
 					updatePoints();
@@ -376,25 +377,31 @@ int LCDTick(int state) {
 //points 
 
 void ptsCheck(unsigned char currentIns, unsigned int player) {
-	if(player == 1) {
-		if(currentIns == scale.direction[scale.current]) {
-			player1 += 1;
+	unsigned char startBeat = song.start[song.current];
+	unsigned char stopBeat = song.stop[song.current];
+	unsigned char directBeat = song.direction[song.current];
+	
+	if(currentIns == directBeat) {
+		if(beat <= stopBeat && beat >= startBeat) {		//as long as correct button is pressed within range of note, get 1 point
 			scoreChange = true;
+			if(player == 1) {
+				player1 += 1;
+			} else {
+				player2 += 1;
+			}
 		}
-		if(currentIns == scale.start[scale.current]) {
-			player1 += 2;
+		
+		if(beat == startBeat) {		//if correct button is pressed directly on beat, get 2 points
 			scoreChange = true;
+			if(player == 1) {
+				player1 += 5;
+			} else {
+				player2 += 5;
+			}
 		}
-	} else {
-		if(currentIns == scale.direction[scale.current]) {
-			player2 += 1;
-			scoreChange = true;
-		}
-		if(currentIns == scale.start[scale.current]) {
-			player2 += 2;
-			scoreChange = true;
-		}
+		
 	}
+
 }
 
 
@@ -423,26 +430,29 @@ int PointsTick(int state) {
 		case Points_wait: //LCD_DisplayString(1, "points wait");
 			break;
 		case Points_check:
-				for(unsigned char i = 0; i < 12; i++) {
-					unsigned char currentIns;
-					unsigned char player = 1;
-					switch(ins[i]) {
-						case Up: player = 2;
-						case X: currentIns = up;
+				for(unsigned char i = 0; i < strlen(ins); i++) {
+					if(!inputContains(prevIns, ins[i])) {	//only check point input if new button is pressed
+						unsigned char currentIns;
+						unsigned char player = 1;
+						switch(ins[i]) {
+							case Up: player = 2;
+							case X: currentIns = up;
 							break;
-						case Down: player = 2;
-						case B: currentIns = down;
+							case Down: player = 2;
+							case B: currentIns = down;
 							break;
-						case Left: player = 2;
-						case Y: currentIns = left;
+							case Left: player = 2;
+							case Y: currentIns = left;
 							break;
-						case Right: player = 2;
-						case A: currentIns = right;
+							case Right: player = 2;
+							case A: currentIns = right;
 							break;
-						default:currentIns = zero;
+							default:currentIns = zero;
 							break;
+						}
+						ptsCheck(currentIns, player);
 					}
-					ptsCheck(currentIns, player);
+					strcpy(prevIns, ins);
 				}
 			break;
 		default: //LCD_DisplayString(1, "points default");
@@ -531,13 +541,20 @@ int main()
 	TimerOn();
 	LCD_init();
 	LCD_LoadCustomChars();
-	scale = cScale(scale);
+	//song = megalovania(song);
+	song = littleStar(song);
+	//song = birthday(song);
 	PWM_on();
-	unsigned char whole[scale.max + 3];
+	unsigned char whole[song.max + 3];
 	unsigned char display[33];
 	wholeSong = whole;
 	displayString = display;
-	wholeSong = generateSongString(scale, wholeSong);
+	wholeSong = generateSongString(song, wholeSong);
+// 	LCD_DisplayString(1, wholeSong);
+// 	TimerSet(10000);
+// 	while(!TimerFlag);
+// 	TimerFlag = 0;
+	TimerSet(GCD);
 
 	unsigned short i; // Scheduler for-loop iterator
 	while(1) {
