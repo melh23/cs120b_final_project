@@ -66,7 +66,8 @@ int SNESInputTick(int state) {
 	
 	//get input from controller
  	unsigned short button = GetSNESIn();
-	PORTB = (PORTB & 0x00) | button;	//for debugging
+	//PORTA = (PORTA & 0x01) | 0x00;
+	//PORTB = (PORTB & 0x00) | button;	//for debugging
 	mapPlayerInput(button, ins);
 	
 	//State machine transitions
@@ -119,6 +120,16 @@ void LCD_WriteValue(unsigned int value) {
 	unsigned char buffer[10];
 	itoa(value, buffer, 10);
 	LCD_DisplayString(1, buffer);
+}
+
+void send_PWM(double frequency) {
+	//set_PWM(frequency);
+	for(unsigned char i = 0; i < 19; i++) {
+		if(notes[i] == frequency) {
+			PORTB = (PORTB & 0x00) | i;
+			return;
+		}
+	}
 }
 
 //Audio SM
@@ -177,23 +188,24 @@ int AudioTick(int state) {
 	
 	//State machine actions
 	switch(state) {
-		case Audio_wait: set_PWM(0);
+		case Audio_wait: send_PWM(0); //set_PWM(0);
 			break;
-		case Audio_start: set_PWM(song.tone[song.current]);
+		case Audio_start: send_PWM(song.tone[song.current]); //set_PWM(song.tone[song.current]);
 			break;
 		case Audio_play: 
 			break;
-		case Audio_off: set_PWM(0);
+		case Audio_off: send_PWM(0); //set_PWM(0);
 			break;
-		case Audio_pause: set_PWM(0);
+		case Audio_pause: send_PWM(0); //set_PWM(0);
 			break;
-		default: set_PWM(0);	
+		default: send_PWM(0); //set_PWM(0);	
 			break;
 	}
 	
 	//when at end of song, return to main menu
 	if(beat > song.max && menu == false && pause == false) {
-		LCD_DisplayString(1, "end of song!");
+		LCD_DisplayStringNoClear(1, "end of song!");
+		_delay_ms(1000);
 		state = Audio_wait;
 		song.current = 0;
 		song_over = true;
@@ -544,17 +556,13 @@ int main()
 	//song = megalovania(song);
 	song = littleStar(song);
 	//song = birthday(song);
-	PWM_on();
+	//song = cScale(song);
+	//PWM_on();
 	unsigned char whole[song.max + 3];
 	unsigned char display[33];
 	wholeSong = whole;
 	displayString = display;
 	wholeSong = generateSongString(song, wholeSong);
-// 	LCD_DisplayString(1, wholeSong);
-// 	TimerSet(10000);
-// 	while(!TimerFlag);
-// 	TimerFlag = 0;
-	TimerSet(GCD);
 
 	unsigned short i; // Scheduler for-loop iterator
 	while(1) {
@@ -574,6 +582,5 @@ int main()
 		TimerFlag = 0;
 	}
 
-	// Error: Program should not exit!
 	return 0;
 }

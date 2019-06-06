@@ -13,8 +13,8 @@
 #define CONTROL_BUS PORTC	// port connected to pins 4-6 of LCD display
 #define DATA_CMD DDRD		// ddrx connected to pins 7-14 of LCD display
 #define CONTROL_CMD DDRC	// ddrx connected to pins 4-6 of LCD display
-#define RS 2			// pin number of uC connected to pin 4 of LCD disp.
-#define RW 1		//pin number of uC connected to pin 5 of LCD disp.
+#define RS 1			// pin number of uC connected to pin 4 of LCD disp.
+//#define RW 1		//pin number of uC connected to pin 5 of LCD disp.
 #define E 0			// pin number of uC connected to pin 6 of LCD disp.
 
 /*-------------------------------------------------------------------------*/
@@ -37,8 +37,8 @@ void LCD_ClearScreen(void) {
 
 void LCD_init(void) {
 
-	CONTROL_CMD = 0xFF;		//allow write data to memory?
-	DATA_CMD = 0xFF;
+	//CONTROL_CMD = 0xFF;		//allow write data to memory?
+	//DATA_CMD = 0xFF;
 	
     //wait for 100 ms.
 	delay_ms(100);

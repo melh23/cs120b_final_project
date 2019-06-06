@@ -14,7 +14,7 @@ struct music {
 	unsigned char tones;
 	};
 
-
+#define noFreq 0.00
 #define a3 220.00
 #define a3s 233.08
 #define b3 246.94
@@ -33,6 +33,8 @@ struct music {
 #define c5 523.25
 #define c5s 554.37
 #define d5 587.33
+
+double notes[] = {noFreq, a3, a3s, b3, c4, c4s, d4, d4s, e4, f4, f4s, g4, g4s, a4, a4s, b4, c5, c5s, d5};
 
 const static double scaleTones[] = {c4, d4, e4, f4, g4, a4, b4, c5, b4, a4, g4, f4, e4, d4, c4};
 const static unsigned char scaleStarts[] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
@@ -143,29 +145,29 @@ unsigned char* generateSongString(struct music song, unsigned char* str) {
 	return str;
 }
 
-void set_PWM(double frequency) {
-	static double current_frequency;
-	if (frequency != current_frequency) {
-		if (!frequency) { TCCR3B &= 0x08; }
-		else { TCCR3B |= 0x03; }
-		
-		if (frequency < 0.954) { OCR3A = 0xFFFF; }
-		else if (frequency > 31250) { OCR3A = 0x0000; }
-		
-		else { OCR3A = (short)(8000000 / (128 * frequency)) - 1; }
-
-		TCNT3 = 0;
-		current_frequency = frequency;
-	}
-}
-
-void PWM_on() {
-	TCCR3A = (1 << COM3A0);
-	TCCR3B = (1 << WGM32) | (1 << CS31) | (1 << CS30);
-	set_PWM(0);
-}
-
-void PWM_off() {
-	TCCR3A = 0x00;
-	TCCR3B = 0x00;
-}
+// void set_PWM(double frequency) {
+// 	static double current_frequency;
+// 	if (frequency != current_frequency) {
+// 		if (!frequency) { TCCR3B &= 0x08; }
+// 		else { TCCR3B |= 0x03; }
+// 		
+// 		if (frequency < 0.954) { OCR3A = 0xFFFF; }
+// 		else if (frequency > 31250) { OCR3A = 0x0000; }
+// 		
+// 		else { OCR3A = (short)(8000000 / (128 * frequency)) - 1; }
+// 
+// 		TCNT3 = 0;
+// 		current_frequency = frequency;
+// 	}
+// }
+// 
+// void PWM_on() {
+// 	TCCR3A = (1 << COM3A0);
+// 	TCCR3B = (1 << WGM32) | (1 << CS31) | (1 << CS30);
+// 	set_PWM(0);
+// }
+// 
+// void PWM_off() {
+// 	TCCR3A = 0x00;
+// 	TCCR3B = 0x00;
+// }
